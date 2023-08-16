@@ -54,12 +54,14 @@ contract NFTMarketplace is ERC721URIStorage, Ownable {
         require(block.timestamp < auction.endTime, "Auction has expired");
         require(msg.value > auction.highestBid.add(minBidIncrement), "Bid too low");
 
-        if (auction.highestBidder != address(0)) {
-            auction.highestBidder.transfer(auction.highestBid);
-        }
-
+        uint256 previousHighestBid = auction.highestBid;
         auction.highestBid = msg.value;
         auction.highestBidder = msg.sender;
+
+        if (previousHighestBid > 0) {
+            // Refund the previous highest bidder outside the state change
+            payable(auction.highestBidder).send(previousHighestBid);
+        }
 
         emit NewBidPlaced(_tokenId, msg.sender, msg.value);
     }
@@ -80,6 +82,7 @@ contract NFTMarketplace is ERC721URIStorage, Ownable {
     }
 
     function setListingFee(uint256 _fee) external onlyOwner {
+        require(_fee > 0, "Listing fee must be greater than zero");
         listingFee = _fee;
     }
 
